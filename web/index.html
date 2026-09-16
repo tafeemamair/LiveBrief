@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiveBrief - Voice Activation & Incremental STT</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-mark">⚡</div>
+        <div>
+          <h1 class="app-title">LiveBrief Voice Layer</h1>
+          <p class="app-subtitle">Phase 2.1: Real-time incremental speech-to-text with explicit activation</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="statusBadge" class="status-badge status-off">
+          <span class="status-indicator"></span>
+          <span id="statusText">Status: OFF / Inactive</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Error & Warning Banner -->
+    <div id="errorBanner" class="alert-banner hidden">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-content">
+        <div id="errorTitle" class="alert-title">Microphone Error</div>
+        <div id="errorMessage" class="alert-desc">An error occurred during microphone activation.</div>
+      </div>
+      <button id="dismissErrorBtn" class="btn-dismiss">✕</button>
+    </div>
+
+    <!-- Activation Control Card -->
+    <main class="main-content">
+      <section class="control-card">
+        <div class="control-header">
+          <h2>Microphone & Activation Control</h2>
+          <div class="state-meta" id="stateMeta">State: IDLE (Hardware stream closed)</div>
+        </div>
+
+        <div class="activation-actions">
+          <button id="startBtn" class="btn btn-primary">
+            <span class="btn-icon">🎙️</span>
+            <span>Start LiveBrief</span>
+          </button>
+          <button id="stopBtn" class="btn btn-danger" disabled>
+            <span class="btn-icon">⏹️</span>
+            <span>Stop LiveBrief</span>
+          </button>
+          <button id="clearBtn" class="btn btn-secondary">
+            <span>Clear Transcript</span>
+          </button>
+        </div>
+
+        <!-- Audio Activity Meter -->
+        <div class="audio-meter-container">
+          <div class="meter-label">Audio Input Level:</div>
+          <div class="meter-track">
+            <div id="meterBar" class="meter-bar" style="width: 0%;"></div>
+          </div>
+          <div id="meterVal" class="meter-value">0%</div>
+        </div>
+      </section>
+
+      <!-- Live Transcript Section -->
+      <section class="transcript-card">
+        <div class="transcript-header">
+          <h2>Real-Time Incremental Transcript</h2>
+          <div class="transcript-stats">
+            <span id="wordCountBadge" class="stat-pill">0 words</span>
+            <span id="segmentCountBadge" class="stat-pill">0 segments</span>
+          </div>
+        </div>
+
+        <div id="transcriptViewport" class="transcript-viewport">
+          <div id="emptyState" class="empty-state">
+            <div class="empty-icon">🎧</div>
+            <p>Click <strong>Start LiveBrief</strong> to begin real-time speech transcription.</p>
+            <p class="empty-sub">Microphone remains completely inactive until explicitly started.</p>
+          </div>
+          <div id="finalizedContainer" class="finalized-container"></div>
+          <div id="interimContainer" class="interim-container hidden">
+            <span class="interim-pulse"></span>
+            <span id="interimText" class="interim-text"></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer Status -->
+    <footer class="app-footer">
+      <div class="footer-item">Engine: <span class="footer-val">Web Speech API (Browser Native)</span></div>
+      <div class="footer-item">Audio Capture: <span id="captureStatus" class="footer-val">Closed</span></div>
+      <div class="footer-item">Phase 1 Integration: <span class="footer-val">LiveBriefPipeline (Ready)</span></div>
+    </footer>
+  </div>
+
+  <script src="stt.js"></script>
+</body>
+</html>
