@@ -7,6 +7,9 @@ from livebrief.voice.models import (
     VoiceSessionMetrics,
 )
 from livebrief.voice.state_machine import VoiceActivationStateMachine
+from livebrief.voice.utterance import UtteranceDetector, UtteranceType
+from livebrief.voice.context import SessionContextManager
+from livebrief.voice.adapter import VoicePipelineAdapter, IntelligenceResponseEvent
 
 __all__ = [
     "VoiceState",
@@ -14,4 +17,9 @@ __all__ = [
     "VoiceEvent",
     "VoiceSessionMetrics",
     "VoiceActivationStateMachine",
+    "UtteranceDetector",
+    "UtteranceType",
+    "SessionContextManager",
+    "VoicePipelineAdapter",
+    "IntelligenceResponseEvent",
 ]

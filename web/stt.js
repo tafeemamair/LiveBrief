@@ -257,6 +257,11 @@ class LiveBriefSpeechController {
 
     this.ui.emptyState.style.display = "none";
     this.ui.transcriptViewport.scrollTop = this.ui.transcriptViewport.scrollHeight;
+
+    // Phase 2.2 Integration: Forward finalized transcript segment to copilot controller
+    if (window.copilotController && typeof window.copilotController.handleTranscriptSegment === "function") {
+      window.copilotController.handleTranscriptSegment(text);
+    }
   }
 
   /**

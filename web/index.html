@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LiveBrief - Voice Activation & Incremental STT</title>
+  <title>LiveBrief - Voice & Intelligence Copilot</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,8 +13,8 @@
       <div class="header-left">
         <div class="logo-mark">⚡</div>
         <div>
-          <h1 class="app-title">LiveBrief Voice Layer</h1>
-          <p class="app-subtitle">Phase 2.1: Real-time incremental speech-to-text with explicit activation</p>
+          <h1 class="app-title">LiveBrief Intelligence Copilot</h1>
+          <p class="app-subtitle">Phase 2.2: Voice-to-Intelligence integration with sub-10ms Moss retrieval</p>
         </div>
       </div>
       <div class="header-right">
@@ -35,71 +35,164 @@
       <button id="dismissErrorBtn" class="btn-dismiss">✕</button>
     </div>
 
-    <!-- Activation Control Card -->
-    <main class="main-content">
-      <section class="control-card">
-        <div class="control-header">
-          <h2>Microphone & Activation Control</h2>
-          <div class="state-meta" id="stateMeta">State: IDLE (Hardware stream closed)</div>
-        </div>
-
-        <div class="activation-actions">
-          <button id="startBtn" class="btn btn-primary">
-            <span class="btn-icon">🎙️</span>
-            <span>Start LiveBrief</span>
-          </button>
-          <button id="stopBtn" class="btn btn-danger" disabled>
-            <span class="btn-icon">⏹️</span>
-            <span>Stop LiveBrief</span>
-          </button>
-          <button id="clearBtn" class="btn btn-secondary">
-            <span>Clear Transcript</span>
-          </button>
-        </div>
-
-        <!-- Audio Activity Meter -->
-        <div class="audio-meter-container">
-          <div class="meter-label">Audio Input Level:</div>
-          <div class="meter-track">
-            <div id="meterBar" class="meter-bar" style="width: 0%;"></div>
+    <!-- Main Copilot Workspace (Left: Voice & Transcript, Right: Intelligence Copilot Side-Panel) -->
+    <div class="workspace-grid">
+      <!-- Left Column: Voice Control & Streaming Transcript -->
+      <section class="workspace-left">
+        <!-- Activation Control Card -->
+        <div class="control-card">
+          <div class="control-header">
+            <h2>Microphone & Activation</h2>
+            <div class="state-meta" id="stateMeta">State: IDLE (Hardware stream closed)</div>
           </div>
-          <div id="meterVal" class="meter-value">0%</div>
+
+          <div class="activation-actions">
+            <button id="startBtn" class="btn btn-primary">
+              <span class="btn-icon">🎙️</span>
+              <span>Start LiveBrief</span>
+            </button>
+            <button id="stopBtn" class="btn btn-danger" disabled>
+              <span class="btn-icon">⏹️</span>
+              <span>Stop LiveBrief</span>
+            </button>
+            <button id="clearBtn" class="btn btn-secondary">
+              <span>Clear</span>
+            </button>
+          </div>
+
+          <!-- Audio Input Level Meter -->
+          <div class="audio-meter-container">
+            <div class="meter-label">Input Level:</div>
+            <div class="meter-track">
+              <div id="meterBar" class="meter-bar" style="width: 0%;"></div>
+            </div>
+            <div id="meterVal" class="meter-value">0%</div>
+          </div>
+        </div>
+
+        <!-- Live Transcript Section -->
+        <div class="transcript-card">
+          <div class="transcript-header">
+            <h2>Speech Stream</h2>
+            <div class="transcript-stats">
+              <span id="wordCountBadge" class="stat-pill">0 words</span>
+              <span id="segmentCountBadge" class="stat-pill">0 segments</span>
+            </div>
+          </div>
+
+          <div id="transcriptViewport" class="transcript-viewport">
+            <div id="emptyState" class="empty-state">
+              <div class="empty-icon">🎧</div>
+              <p>Click <strong>Start LiveBrief</strong> to speak naturally.</p>
+              <p class="empty-sub">Speech queries automatically trigger real-time grounded intelligence cards.</p>
+            </div>
+            <div id="finalizedContainer" class="finalized-container"></div>
+            <div id="interimContainer" class="interim-container hidden">
+              <span class="interim-pulse"></span>
+              <span id="interimText" class="interim-text"></span>
+            </div>
+          </div>
+
+          <!-- Manual Query Fallback -->
+          <div class="manual-query-bar">
+            <input type="text" id="manualQueryInput" placeholder="Or type a research question..." />
+            <button id="manualQueryBtn" class="btn btn-secondary">Ask</button>
+          </div>
         </div>
       </section>
 
-      <!-- Live Transcript Section -->
-      <section class="transcript-card">
-        <div class="transcript-header">
-          <h2>Real-Time Incremental Transcript</h2>
-          <div class="transcript-stats">
-            <span id="wordCountBadge" class="stat-pill">0 words</span>
-            <span id="segmentCountBadge" class="stat-pill">0 segments</span>
+      <!-- Right Column: Compact LiveBrief Intelligence Side-Panel -->
+      <aside class="workspace-right">
+        <div class="copilot-card">
+          <div class="copilot-header">
+            <div class="copilot-title-group">
+              <span class="copilot-icon">💡</span>
+              <h2>LiveBrief Copilot</h2>
+            </div>
+            <div id="copilotStatusText" class="copilot-status">Ready for speech</div>
           </div>
-        </div>
 
-        <div id="transcriptViewport" class="transcript-viewport">
-          <div id="emptyState" class="empty-state">
-            <div class="empty-icon">🎧</div>
-            <p>Click <strong>Start LiveBrief</strong> to begin real-time speech transcription.</p>
-            <p class="empty-sub">Microphone remains completely inactive until explicitly started.</p>
+          <!-- Placeholder when no query has been triggered -->
+          <div id="copilotPlaceholder" class="copilot-placeholder">
+            <div class="copilot-placeholder-icon">⚡</div>
+            <h3>Grounded Intelligence Ready</h3>
+            <p>Speak any question about system architecture, latency, retrieval, or safeguards.</p>
+            <div class="sample-chips">
+              <span class="sample-chip">"What are the latency budgets?"</span>
+              <span class="sample-chip">"How does Moss hybrid retrieval work?"</span>
+              <span class="sample-chip">"What are the hallucination safeguards?"</span>
+            </div>
           </div>
-          <div id="finalizedContainer" class="finalized-container"></div>
-          <div id="interimContainer" class="interim-container hidden">
-            <span class="interim-pulse"></span>
-            <span id="interimText" class="interim-text"></span>
+
+          <!-- Active Copilot Content -->
+          <div id="copilotContent" class="copilot-content hidden">
+            <!-- Spinner -->
+            <div id="copilotSpinner" class="copilot-spinner-row hidden">
+              <div class="spinner"></div>
+              <span>Searching in-process Moss knowledge...</span>
+            </div>
+
+            <!-- Context & Active Query Banner -->
+            <div class="copilot-query-banner">
+              <div class="active-query-label">Active Query:</div>
+              <div id="copilotActiveQuery" class="active-query-text"></div>
+              <div id="copilotContextTag" class="context-tag hidden"></div>
+            </div>
+
+            <!-- Grounding Verification Badge -->
+            <div class="grounding-badge-row">
+              <div id="groundingBadge" class="grounding-pill grounding-verified">✓ 100% Grounded</div>
+            </div>
+
+            <!-- Alert Box (for abstention / caveats) -->
+            <div id="alertBox" class="copilot-alert-box hidden">
+              <span class="alert-box-icon">⚠️</span>
+              <span id="alertText" class="alert-box-text"></span>
+            </div>
+
+            <!-- Suggested Executive Response -->
+            <div class="copilot-section">
+              <div class="section-title">Suggested Response</div>
+              <div id="suggestedResponseText" class="suggested-response-body"></div>
+            </div>
+
+            <!-- Key Findings Section -->
+            <div id="keyFindingsSection" class="copilot-section">
+              <div class="section-title">Grounded Key Findings</div>
+              <ul id="keyFindingsContainer" class="key-findings-list"></ul>
+            </div>
+
+            <!-- Evidence & Sources Ledger -->
+            <div id="evidenceSection" class="copilot-section">
+              <div class="section-title">Evidence & Sources Ledger</div>
+              <div id="evidenceLedgerContainer" class="evidence-ledger-container"></div>
+            </div>
+
+            <!-- Contextual Follow-up Suggestions -->
+            <div id="followupsSection" class="copilot-section">
+              <div class="section-title">Suggested Follow-Ups</div>
+              <div id="followupsContainer" class="followup-chips-container"></div>
+            </div>
+
+            <!-- Latency Telemetry Breakdown -->
+            <div class="copilot-telemetry-card">
+              <div class="telemetry-title">⚡ Latency Telemetry</div>
+              <div id="telemetrySummary" class="telemetry-summary">Moss: 0.0ms | MMR: 0.0ms | Total: 0.0ms</div>
+            </div>
           </div>
         </div>
-      </section>
-    </main>
+      </aside>
+    </div>
 
     <!-- Footer Status -->
     <footer class="app-footer">
-      <div class="footer-item">Engine: <span class="footer-val">Web Speech API (Browser Native)</span></div>
-      <div class="footer-item">Audio Capture: <span id="captureStatus" class="footer-val">Closed</span></div>
-      <div class="footer-item">Phase 1 Integration: <span class="footer-val">LiveBriefPipeline (Ready)</span></div>
+      <div class="footer-item">Transcription: <span class="footer-val">Web Speech API (Browser-Native MVP)</span></div>
+      <div class="footer-item">Hot-Path Retrieval: <span class="footer-val">moss_core.Index (In-Process)</span></div>
+      <div class="footer-item">Grounding Guarantee: <span class="footer-val">Evidence-First (Zero Fabricated Claims)</span></div>
     </footer>
   </div>
 
   <script src="stt.js"></script>
+  <script src="copilot.js"></script>
 </body>
 </html>
