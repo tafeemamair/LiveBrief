@@ -78,9 +78,9 @@ class LiveBriefSpeechController {
     if (this.state === "LISTENING") return;
     this.hideError();
 
-    this.setState("REQUESTING_PERMISSION");
-
     try {
+      this.setState("REQUESTING_PERMISSION");
+
       // 1. Explicitly request microphone stream
       this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 
@@ -335,26 +335,34 @@ class LiveBriefSpeechController {
       this.ui.statusBadge.className = "status-badge status-live";
       this.ui.statusText.textContent = "Status: 🔴 LIVE / Listening";
       this.ui.stateMeta.textContent = "State: LISTENING (Microphone & STT Active)";
-      this.ui.captureStatus.textContent = "Active (Streaming)";
-      this.ui.captureStatus.style.color = "#4ade80";
+      if (this.ui.captureStatus) {
+        this.ui.captureStatus.textContent = "Active (Streaming)";
+        this.ui.captureStatus.style.color = "#4ade80";
+      }
     } else if (isError) {
       this.ui.statusBadge.className = "status-badge status-error";
       this.ui.statusText.textContent = "Status: ⚠️ Error";
       this.ui.stateMeta.textContent = "State: ERROR (Hardware stream closed)";
-      this.ui.captureStatus.textContent = "Closed";
-      this.ui.captureStatus.style.color = "#f87171";
+      if (this.ui.captureStatus) {
+        this.ui.captureStatus.textContent = "Closed";
+        this.ui.captureStatus.style.color = "#f87171";
+      }
     } else if (isReq) {
       this.ui.statusBadge.className = "status-badge status-off";
       this.ui.statusText.textContent = "Status: ⏳ Requesting Permission...";
       this.ui.stateMeta.textContent = "State: REQUESTING_PERMISSION";
-      this.ui.captureStatus.textContent = "Initializing...";
-      this.ui.captureStatus.style.color = "#38bdf8";
+      if (this.ui.captureStatus) {
+        this.ui.captureStatus.textContent = "Initializing...";
+        this.ui.captureStatus.style.color = "#38bdf8";
+      }
     } else {
       this.ui.statusBadge.className = "status-badge status-off";
       this.ui.statusText.textContent = "Status: ⚪ OFF / Inactive";
       this.ui.stateMeta.textContent = "State: IDLE (Hardware stream closed)";
-      this.ui.captureStatus.textContent = "Closed";
-      this.ui.captureStatus.style.color = "var(--text-secondary)";
+      if (this.ui.captureStatus) {
+        this.ui.captureStatus.textContent = "Closed";
+        this.ui.captureStatus.style.color = "var(--text-secondary)";
+      }
     }
   }
 

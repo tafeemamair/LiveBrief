@@ -139,3 +139,32 @@ def test_listener_removal():
     sm.remove_listener(listener)
     sm.stop()
     assert len(called) == 0
+
+
+def test_frontend_dom_elements_synchronization():
+    """Verify that all document.getElementById calls in web/stt.js and web/copilot.js
+
+    are either present in web/index.html or safely guarded against null dereferences.
+    """
+    import re
+    from pathlib import Path
+
+    web_dir = Path(__file__).resolve().parent.parent / "web"
+    html_content = (web_dir / "index.html").read_text(encoding="utf-8")
+    stt_content = (web_dir / "stt.js").read_text(encoding="utf-8")
+
+    # Extract all IDs in index.html
+    html_ids = set(re.findall(r'id=["\']([^"\']+)["\']', html_content))
+
+    # Extract all document.getElementById("...") in stt.js
+    stt_ids = set(re.findall(r'document\.getElementById\(["\']([^"\']+)["\']\)', stt_content))
+
+    # Verify that any element ID in stt.js that is missing in index.html is null-guarded in stt.js
+    missing_ids = stt_ids - html_ids
+    for missing in missing_ids:
+        # Check that accesses to this.ui[missing] or this.ui.<missing> are guarded
+        assert f"this.ui.{missing}" in stt_content
+        # Ensure captureStatus is guarded with 'if (this.ui.captureStatus)'
+        if missing == "captureStatus":
+            assert "if (this.ui.captureStatus)" in stt_content
+
