@@ -34,7 +34,8 @@ def test_server():
         except Exception:
             pass
         finally:
-            if hasattr(pipeline, "indexer"):
+            if hasattr(pipeline, "indexer") and pipeline.indexer is not None:
+                pipeline.indexer._index = None
                 pipeline.indexer = None
             del pipeline
 

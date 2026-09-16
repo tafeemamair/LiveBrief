@@ -14,10 +14,13 @@
         <div class="logo-mark">⚡</div>
         <div>
           <h1 class="app-title">LiveBrief Intelligence Copilot</h1>
-          <p class="app-subtitle">Phase 2.2: Voice-to-Intelligence integration with sub-10ms Moss retrieval</p>
+          <p class="app-subtitle">Phase 2.3: Real-Time Grounded Copilot with Sub-10ms Moss Retrieval</p>
         </div>
       </div>
       <div class="header-right">
+        <button id="kbToggleBtn" class="btn btn-secondary btn-header-kb">
+          <span>📁 Knowledge Base (<span id="kbDocCountBadge">0</span>)</span>
+        </button>
         <div id="statusBadge" class="status-badge status-off">
           <span class="status-indicator"></span>
           <span id="statusText">Status: OFF / Inactive</span>
@@ -112,6 +115,17 @@
             <div id="copilotStatusText" class="copilot-status">Ready for speech</div>
           </div>
 
+          <!-- Truthful Request Lifecycle Step Indicator -->
+          <div class="state-pills-row" id="statePillsRow">
+            <span class="state-pill" id="pillListening">1. Listening</span>
+            <span class="state-arrow">→</span>
+            <span class="state-pill" id="pillUnderstanding">2. Understanding</span>
+            <span class="state-arrow">→</span>
+            <span class="state-pill" id="pillRetrieving">3. Retrieving + Verifying</span>
+            <span class="state-arrow">→</span>
+            <span class="state-pill active" id="pillReady">4. Ready</span>
+          </div>
+
           <!-- Placeholder when no query has been triggered -->
           <div id="copilotPlaceholder" class="copilot-placeholder">
             <div class="copilot-placeholder-icon">⚡</div>
@@ -129,7 +143,7 @@
             <!-- Spinner -->
             <div id="copilotSpinner" class="copilot-spinner-row hidden">
               <div class="spinner"></div>
-              <span>Searching in-process Moss knowledge...</span>
+              <span id="copilotSpinnerText">Searching in-process Moss knowledge...</span>
             </div>
 
             <!-- Context & Active Query Banner -->
@@ -164,7 +178,7 @@
 
             <!-- Evidence & Sources Ledger -->
             <div id="evidenceSection" class="copilot-section">
-              <div class="section-title">Evidence & Sources Ledger</div>
+              <div class="section-title">Evidence & Sources Ledger <span class="ledger-hint">(Click card to inspect provenance)</span></div>
               <div id="evidenceLedgerContainer" class="evidence-ledger-container"></div>
             </div>
 
@@ -182,6 +196,79 @@
           </div>
         </div>
       </aside>
+    </div>
+
+    <!-- Evidence Explorer Modal (In-Memory Provenance Inspection) -->
+    <div id="evidenceModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-icon">🔎</span>
+            <h3 id="modalEvidenceTitle">Evidence Source Details</h3>
+          </div>
+          <button id="closeEvidenceModalBtn" class="btn-close">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-meta-grid">
+            <div class="meta-item"><span class="meta-label">Citation:</span> <span id="modalCitationId" class="meta-val meta-val-blue">[1]</span></div>
+            <div class="meta-item"><span class="meta-label">Document ID:</span> <span id="modalDocId" class="meta-val meta-val-mono">doc_id</span></div>
+            <div class="meta-item"><span class="meta-label">Chunk ID:</span> <span id="modalChunkId" class="meta-val meta-val-mono">chunk_id</span></div>
+            <div class="meta-item"><span class="meta-label">Relevance Score:</span> <span id="modalRelevanceScore" class="meta-val meta-val-amber">0.000</span></div>
+            <div class="meta-item full-width"><span class="meta-label">Source URI:</span> <span id="modalSourceUri" class="meta-val meta-val-mono">source.md</span></div>
+          </div>
+          <div class="modal-content-section">
+            <div class="section-title">Retrieved Chunk Excerpt / Content:</div>
+            <div id="modalChunkContent" class="modal-chunk-box"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Private Knowledge Base Drawer -->
+    <div id="kbDrawer" class="modal-overlay hidden">
+      <div class="modal-card kb-drawer-card">
+        <div class="modal-header">
+          <div class="modal-title-group">
+            <span class="modal-icon">📚</span>
+            <h3>Private Knowledge Base</h3>
+          </div>
+          <button id="closeKbDrawerBtn" class="btn-close">✕</button>
+        </div>
+        <div class="modal-body kb-body">
+          <div class="kb-form-card">
+            <h4>Index Local Document</h4>
+            <p class="kb-form-desc">Index local Markdown, plain text, or structured JSON notes into the in-process Moss retrieval engine.</p>
+            
+            <div id="kbAlertBox" class="alert-banner hidden">
+              <div class="alert-icon">⚠️</div>
+              <div id="kbAlertText" class="alert-desc"></div>
+            </div>
+
+            <div class="kb-form-row">
+              <input type="text" id="kbDocTitle" placeholder="Document Title (e.g. Project Architecture)" />
+              <select id="kbDocFormat">
+                <option value="markdown">Markdown (.md)</option>
+                <option value="text">Plain Text (.txt)</option>
+                <option value="json">JSON (.json)</option>
+              </select>
+            </div>
+            <textarea id="kbDocContent" placeholder="Paste document content or structured JSON here..." rows="4"></textarea>
+            <button id="kbIndexBtn" class="btn btn-primary">
+              <span>⚡ Index into Moss Engine</span>
+            </button>
+          </div>
+
+          <div class="kb-list-section">
+            <div class="kb-list-header">
+              <h4>Registered Documents (<span id="kbListCount">0</span>)</h4>
+              <button id="kbRefreshBtn" class="btn btn-secondary btn-sm">↻ Refresh</button>
+            </div>
+            <div id="kbDocList" class="kb-doc-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Footer Status -->

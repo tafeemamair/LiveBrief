@@ -1,6 +1,7 @@
 /**
- * LiveBrief Intelligence Copilot Controller (Phase 2.2)
- * Manages utterance coalescing, API query execution, and compact copilot card rendering.
+ * LiveBrief Intelligence Copilot Controller (Phase 2.3)
+ * Manages truthful request lifecycle, stale response protection, interactive evidence explorer,
+ * and private knowledge base drawer REST operations.
  */
 
 class LiveBriefCopilotController {
@@ -11,8 +12,12 @@ class LiveBriefCopilotController {
     this.coalesceDelayMs = 600; // 600ms debounce/coalescing window
     this.pendingUtterance = "";
     this.isQuerying = false;
+    this.currentRequestId = 0; // Stale-response guard sequence counter
+    this.currentEvidenceSources = []; // In-memory evidence cache for provenance inspection
 
     this.bindEvents();
+    this.loadDocuments();
+    this.setCopilotState("READY", "Ready for speech");
   }
 
   bindEvents() {
@@ -36,6 +41,117 @@ class LiveBriefCopilotController {
         }
       });
     }
+
+    // Stop and Clear button safety: cancel pending debounce and invalidate in-flight queries
+    const stopBtn = document.getElementById("stopBtn");
+    if (stopBtn) {
+      stopBtn.addEventListener("click", () => this.cancelPendingOperations());
+    }
+
+    const clearBtn = document.getElementById("clearBtn");
+    if (clearBtn) {
+      clearBtn.addEventListener("click", () => {
+        this.cancelPendingOperations();
+        this.resetCopilotDisplay();
+      });
+    }
+
+    // Evidence Explorer Modal Close
+    if (this.ui.closeEvidenceModalBtn) {
+      this.ui.closeEvidenceModalBtn.addEventListener("click", () => this.closeEvidenceModal());
+    }
+    if (this.ui.evidenceModal) {
+      this.ui.evidenceModal.addEventListener("click", (e) => {
+        if (e.target === this.ui.evidenceModal) {
+          this.closeEvidenceModal();
+        }
+      });
+    }
+
+    // Knowledge Base Drawer
+    if (this.ui.kbToggleBtn) {
+      this.ui.kbToggleBtn.addEventListener("click", () => this.openKbDrawer());
+    }
+    if (this.ui.closeKbDrawerBtn) {
+      this.ui.closeKbDrawerBtn.addEventListener("click", () => this.closeKbDrawer());
+    }
+    if (this.ui.kbDrawer) {
+      this.ui.kbDrawer.addEventListener("click", (e) => {
+        if (e.target === this.ui.kbDrawer) {
+          this.closeKbDrawer();
+        }
+      });
+    }
+    if (this.ui.kbIndexBtn) {
+      this.ui.kbIndexBtn.addEventListener("click", () => this.indexDocument());
+    }
+    if (this.ui.kbRefreshBtn) {
+      this.ui.kbRefreshBtn.addEventListener("click", () => this.loadDocuments());
+    }
+
+    // Escape key to close open modals
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        this.closeEvidenceModal();
+        this.closeKbDrawer();
+      }
+    });
+  }
+
+  /**
+   * Cancel pending debounce timer and increment request ID to drop stale in-flight responses.
+   */
+  cancelPendingOperations() {
+    if (this.coalesceTimer) {
+      clearTimeout(this.coalesceTimer);
+      this.coalesceTimer = null;
+    }
+    this.pendingUtterance = "";
+    this.isQuerying = false;
+    this.currentRequestId++;
+    this.setCopilotState("READY", "Stopped / Ready");
+  }
+
+  /**
+   * Reset copilot display to initial placeholder state.
+   */
+  resetCopilotDisplay() {
+    this.ui.copilotContent.classList.add("hidden");
+    this.ui.copilotPlaceholder.classList.remove("hidden");
+    this.currentEvidenceSources = [];
+  }
+
+  /**
+   * Update the truthful intelligence lifecycle state indicator.
+   */
+  setCopilotState(state, message) {
+    if (this.ui.copilotStatusText && message) {
+      this.ui.copilotStatusText.textContent = message;
+    }
+
+    const pillListening = document.getElementById("pillListening");
+    const pillUnderstanding = document.getElementById("pillUnderstanding");
+    const pillRetrieving = document.getElementById("pillRetrieving");
+    const pillReady = document.getElementById("pillReady");
+
+    const allPills = [pillListening, pillUnderstanding, pillRetrieving, pillReady];
+    allPills.forEach((p) => p && p.classList.remove("active"));
+
+    switch (state) {
+      case "LISTENING":
+        if (pillListening) pillListening.classList.add("active");
+        break;
+      case "UNDERSTANDING":
+        if (pillUnderstanding) pillUnderstanding.classList.add("active");
+        break;
+      case "RETRIEVING":
+        if (pillRetrieving) pillRetrieving.classList.add("active");
+        break;
+      case "READY":
+      default:
+        if (pillReady) pillReady.classList.add("active");
+        break;
+    }
   }
 
   /**
@@ -55,23 +171,27 @@ class LiveBriefCopilotController {
       clearTimeout(this.coalesceTimer);
     }
 
-    this.showCopilotLoading("Listening... Coalescing speech utterance");
+    this.setCopilotState("UNDERSTANDING", `Understanding query: "${this.pendingUtterance}"...`);
+    this.showCopilotLoading(`Coalescing speech utterance: "${this.pendingUtterance}"...`);
 
     this.coalesceTimer = setTimeout(() => {
       const fullUtterance = this.pendingUtterance;
       this.pendingUtterance = "";
+      this.coalesceTimer = null;
       this.triggerQuery(fullUtterance);
     }, this.coalesceDelayMs);
   }
 
   /**
-   * Send speech query to local LiveBrief backend bridge.
+   * Send speech query to local LiveBrief backend bridge with stale response guard.
    */
   async triggerQuery(queryText) {
     if (!queryText || !queryText.trim()) return;
 
-    this.showCopilotLoading(`Analyzing: "${queryText}"...`);
+    const thisRequestId = ++this.currentRequestId;
     this.isQuerying = true;
+    this.setCopilotState("RETRIEVING", "Searching knowledge & verifying evidence...");
+    this.showCopilotLoading(`Searching knowledge & verifying evidence for: "${queryText}"...`);
 
     try {
       const resp = await fetch("/api/query", {
@@ -83,25 +203,42 @@ class LiveBriefCopilotController {
         }),
       });
 
+      // Discard stale responses if newer request was dispatched or operation was cancelled
+      if (thisRequestId !== this.currentRequestId) {
+        console.log(`[Copilot] Discarding stale response for request #${thisRequestId} (current: #${this.currentRequestId})`);
+        return;
+      }
+
       if (!resp.ok) {
         throw new Error(`HTTP error ${resp.status}`);
       }
 
       const data = await resp.json();
 
+      if (thisRequestId !== this.currentRequestId) {
+        return;
+      }
+
       if (!data.triggered) {
+        this.setCopilotState("READY", `Ignored fragment: "${queryText}"`);
         this.renderSuppressedUtterance(queryText, data.reason || "Non-substantive fragment");
         return;
       }
 
       if (data.event) {
+        this.setCopilotState("READY", "Intelligence Ready");
         this.renderIntelligenceEvent(data.event);
       }
     } catch (err) {
-      console.error("Intelligence query failed:", err);
-      this.renderCopilotError(queryText, err.message || "Failed to reach LiveBrief backend.");
+      if (thisRequestId === this.currentRequestId) {
+        console.error("Intelligence query failed:", err);
+        this.setCopilotState("READY", `Query Error: ${err.message}`);
+        this.renderCopilotError(queryText, err.message || "Failed to reach LiveBrief backend.");
+      }
     } finally {
-      this.isQuerying = false;
+      if (thisRequestId === this.currentRequestId) {
+        this.isQuerying = false;
+      }
     }
   }
 
@@ -117,7 +254,7 @@ class LiveBriefCopilotController {
    */
   renderIntelligenceEvent(event) {
     this.ui.copilotSpinner.classList.add("hidden");
-    this.ui.copilotStatusText.textContent = "Intelligence Ready";
+    this.currentEvidenceSources = event.evidence_sources || [];
 
     // 1. Context & Active Query
     this.ui.copilotActiveQuery.textContent = event.query;
@@ -142,8 +279,9 @@ class LiveBriefCopilotController {
       }
     }
 
-    // 3. Suggested Response
-    this.ui.suggestedResponseText.innerHTML = formatCitations(event.suggested_response);
+    // 3. Suggested Response with Clickable Interactive Citations
+    this.ui.suggestedResponseText.innerHTML = this.formatInteractiveCitations(event.suggested_response);
+    this.bindCitationButtons(this.ui.suggestedResponseText);
 
     // 4. Key Findings
     this.ui.keyFindingsContainer.innerHTML = "";
@@ -152,21 +290,26 @@ class LiveBriefCopilotController {
       event.key_findings.forEach((finding) => {
         const li = document.createElement("li");
         li.className = "finding-item";
-        const cites = finding.citations.map((c) => `<span class="cite-anchor">[${c}]</span>`).join(" ");
+        const cites = finding.citations
+          .map((c) => `<button type="button" class="cite-anchor-btn" data-cite-id="${c}">[${c}]</button>`)
+          .join(" ");
         li.innerHTML = `<span>${escapeHtml(finding.claim)}</span> ${cites}`;
+        this.bindCitationButtons(li);
         this.ui.keyFindingsContainer.appendChild(li);
       });
     } else {
       this.ui.keyFindingsSection.classList.add("hidden");
     }
 
-    // 5. Evidence & Sources Ledger
+    // 5. Evidence & Sources Ledger (Clickable to open Evidence Explorer Modal)
     this.ui.evidenceLedgerContainer.innerHTML = "";
-    if (event.evidence_sources && event.evidence_sources.length > 0) {
+    if (this.currentEvidenceSources.length > 0) {
       this.ui.evidenceSection.classList.remove("hidden");
-      event.evidence_sources.forEach((src) => {
+      this.currentEvidenceSources.forEach((src) => {
         const card = document.createElement("div");
         card.className = "evidence-card";
+        card.id = `evidenceCard_${src.citation_id}`;
+        card.setAttribute("data-cite-id", src.citation_id);
         card.innerHTML = `
           <div class="evidence-card-header">
             <span class="evidence-cite-id">[${src.citation_id}]</span>
@@ -175,6 +318,7 @@ class LiveBriefCopilotController {
           </div>
           <div class="evidence-excerpt">"${escapeHtml(src.excerpt)}"</div>
         `;
+        card.addEventListener("click", () => this.openEvidenceModal(src));
         this.ui.evidenceLedgerContainer.appendChild(card);
       });
     } else {
@@ -201,6 +345,217 @@ class LiveBriefCopilotController {
     this.ui.telemetrySummary.textContent = `Moss: ${lat.moss_retrieval_ms.toFixed(2)}ms | MMR: ${lat.evidence_selection_ms.toFixed(2)}ms | Synthesis: ${lat.synthesis_ms.toFixed(2)}ms | Total E2E: ${event.e2e_voice_to_ui_ms.toFixed(1)}ms`;
   }
 
+  formatInteractiveCitations(text) {
+    if (!text) return "";
+    return escapeHtml(text).replace(
+      /\[(\d+)\]/g,
+      '<button type="button" class="cite-anchor-btn" data-cite-id="$1">[$1]</button>'
+    );
+  }
+
+  bindCitationButtons(parentElement) {
+    const buttons = parentElement.querySelectorAll(".cite-anchor-btn");
+    buttons.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const citeId = btn.getAttribute("data-cite-id");
+        this.highlightAndScrollEvidenceCard(citeId);
+      });
+    });
+  }
+
+  highlightAndScrollEvidenceCard(citeId) {
+    const targetCard = document.getElementById(`evidenceCard_${citeId}`);
+    if (targetCard) {
+      targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      targetCard.classList.remove("evidence-highlight-pulse");
+      // Trigger reflow to restart CSS animation
+      void targetCard.offsetWidth;
+      targetCard.classList.add("evidence-highlight-pulse");
+    }
+  }
+
+  /**
+   * Evidence Explorer Modal (In-Memory Provenance Drill-Down Without Re-Retrieval)
+   */
+  openEvidenceModal(source) {
+    if (!this.ui.evidenceModal) return;
+
+    const modalCitationId = document.getElementById("modalCitationId");
+    const modalDocId = document.getElementById("modalDocId");
+    const modalChunkId = document.getElementById("modalChunkId");
+    const modalRelevanceScore = document.getElementById("modalRelevanceScore");
+    const modalSourceUri = document.getElementById("modalSourceUri");
+    const modalChunkContent = document.getElementById("modalChunkContent");
+
+    if (modalCitationId) modalCitationId.textContent = `[${source.citation_id}]`;
+    if (modalDocId) modalDocId.textContent = source.doc_id || "unknown";
+    if (modalChunkId) modalChunkId.textContent = source.chunk_id || "unknown";
+    if (modalRelevanceScore) modalRelevanceScore.textContent = source.relevance_score ? source.relevance_score.toFixed(4) : "0.0000";
+    if (modalSourceUri) modalSourceUri.textContent = (source.metadata && source.metadata.source_uri) || source.source_uri || source.doc_id || "In-Memory Knowledge Base";
+    if (modalChunkContent) modalChunkContent.textContent = source.excerpt || "No excerpt text available.";
+
+    this.ui.evidenceModal.classList.remove("hidden");
+  }
+
+  closeEvidenceModal() {
+    if (this.ui.evidenceModal) {
+      this.ui.evidenceModal.classList.add("hidden");
+    }
+  }
+
+  /**
+   * Knowledge Base Drawer Controller (GET / POST / DELETE /api/documents)
+   */
+  openKbDrawer() {
+    if (this.ui.kbDrawer) {
+      this.ui.kbDrawer.classList.remove("hidden");
+      this.loadDocuments();
+    }
+  }
+
+  closeKbDrawer() {
+    if (this.ui.kbDrawer) {
+      this.ui.kbDrawer.classList.add("hidden");
+    }
+  }
+
+  async loadDocuments() {
+    try {
+      const resp = await fetch("/api/documents");
+      if (!resp.ok) return;
+
+      const data = await resp.json();
+      const docs = data.documents || [];
+
+      if (this.ui.kbDocCountBadge) {
+        this.ui.kbDocCountBadge.textContent = String(docs.length);
+      }
+      if (this.ui.kbListCount) {
+        this.ui.kbListCount.textContent = String(docs.length);
+      }
+
+      this.renderDocumentList(docs);
+    } catch (e) {
+      console.warn("Failed to load documents list:", e);
+    }
+  }
+
+  renderDocumentList(docs) {
+    if (!this.ui.kbDocList) return;
+    this.ui.kbDocList.innerHTML = "";
+
+    if (docs.length === 0) {
+      this.ui.kbDocList.innerHTML = '<div class="kb-empty">No documents registered. Ingest one above.</div>';
+      return;
+    }
+
+    docs.forEach((doc) => {
+      const card = document.createElement("div");
+      card.className = "kb-doc-card";
+      const dateStr = new Date(doc.indexed_at_ms).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+      card.innerHTML = `
+        <div class="kb-doc-header">
+          <span class="kb-doc-title">${escapeHtml(doc.title)}</span>
+          <span class="kb-doc-badge badge-${doc.source_format}">${doc.source_format.toUpperCase()}</span>
+        </div>
+        <div class="kb-doc-stats">
+          <span>Chunks: <strong>${doc.chunk_count}</strong></span>
+          <span>Chars: <strong>${doc.total_characters}</strong></span>
+          <span>Indexed: <strong>${dateStr}</strong></span>
+        </div>
+        <div class="kb-doc-actions">
+          <span class="kb-doc-id">ID: ${escapeHtml(doc.doc_id)}</span>
+          <button class="btn btn-danger btn-sm btn-delete-doc" data-doc-id="${escapeHtml(doc.doc_id)}">Delete</button>
+        </div>
+      `;
+
+      const deleteBtn = card.querySelector(".btn-delete-doc");
+      if (deleteBtn) {
+        deleteBtn.addEventListener("click", () => this.deleteDocument(doc.doc_id, doc.title));
+      }
+
+      this.ui.kbDocList.appendChild(card);
+    });
+  }
+
+  async indexDocument() {
+    const titleInput = document.getElementById("kbDocTitle");
+    const formatSelect = document.getElementById("kbDocFormat");
+    const contentTextarea = document.getElementById("kbDocContent");
+    const alertBox = document.getElementById("kbAlertBox");
+    const alertText = document.getElementById("kbAlertText");
+
+    const title = titleInput ? titleInput.value.trim() : "";
+    const format = formatSelect ? formatSelect.value : "markdown";
+    const content = contentTextarea ? contentTextarea.value.trim() : "";
+
+    if (!title || !content) {
+      if (alertBox && alertText) {
+        alertText.textContent = "Please provide both a Document Title and Content.";
+        alertBox.classList.remove("hidden");
+      }
+      return;
+    }
+
+    if (alertBox) alertBox.classList.add("hidden");
+
+    try {
+      const resp = await fetch("/api/documents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content,
+          format,
+        }),
+      });
+
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        if (alertBox && alertText) {
+          alertText.textContent = data.error || `Server error (${resp.status})`;
+          alertBox.classList.remove("hidden");
+        }
+        return;
+      }
+
+      // Success
+      if (titleInput) titleInput.value = "";
+      if (contentTextarea) contentTextarea.value = "";
+      if (alertBox) alertBox.classList.add("hidden");
+      await this.loadDocuments();
+    } catch (e) {
+      if (alertBox && alertText) {
+        alertText.textContent = `Network error: ${e.message}`;
+        alertBox.classList.remove("hidden");
+      }
+    }
+  }
+
+  async deleteDocument(docId, title) {
+    if (!confirm(`Are you sure you want to remove "${title}" from the knowledge base?`)) {
+      return;
+    }
+
+    try {
+      const resp = await fetch(`/api/documents/${encodeURIComponent(docId)}`, {
+        method: "DELETE",
+      });
+
+      if (resp.ok) {
+        await this.loadDocuments();
+      } else {
+        const data = await resp.json();
+        alert(data.error || "Failed to delete document.");
+      }
+    } catch (e) {
+      alert(`Network error deleting document: ${e.message}`);
+    }
+  }
+
   renderSuppressedUtterance(queryText, reason) {
     this.ui.copilotSpinner.classList.add("hidden");
     this.ui.copilotStatusText.textContent = `Ignored fragment: "${queryText}" (${reason})`;
@@ -214,12 +569,8 @@ class LiveBriefCopilotController {
   }
 }
 
-function formatCitations(text) {
-  if (!text) return "";
-  return escapeHtml(text).replace(/\[(\d+)\]/g, '<span class="cite-anchor">[$1]</span>');
-}
-
 function escapeHtml(str) {
+  if (!str) return "";
   const div = document.createElement("div");
   div.textContent = str;
   return div.innerHTML;
@@ -247,6 +598,16 @@ document.addEventListener("DOMContentLoaded", () => {
     telemetrySummary: document.getElementById("telemetrySummary"),
     manualQueryInput: document.getElementById("manualQueryInput"),
     manualQueryBtn: document.getElementById("manualQueryBtn"),
+    evidenceModal: document.getElementById("evidenceModal"),
+    closeEvidenceModalBtn: document.getElementById("closeEvidenceModalBtn"),
+    kbDrawer: document.getElementById("kbDrawer"),
+    kbToggleBtn: document.getElementById("kbToggleBtn"),
+    closeKbDrawerBtn: document.getElementById("closeKbDrawerBtn"),
+    kbDocCountBadge: document.getElementById("kbDocCountBadge"),
+    kbListCount: document.getElementById("kbListCount"),
+    kbDocList: document.getElementById("kbDocList"),
+    kbIndexBtn: document.getElementById("kbIndexBtn"),
+    kbRefreshBtn: document.getElementById("kbRefreshBtn"),
   };
 
   window.copilotController = new LiveBriefCopilotController(copilotUI);
