@@ -347,7 +347,40 @@ class LiveBriefCopilotController {
 
   formatInteractiveCitations(text) {
     if (!text) return "";
-    return escapeHtml(text).replace(
+    const escaped = escapeHtml(text);
+
+    // Split by lines to deterministically handle headings and paragraphs
+    const lines = escaped.split(/\r?\n/);
+    const formattedBlocks = [];
+    let currentParagraph = [];
+
+    const flushParagraph = () => {
+      if (currentParagraph.length > 0) {
+        formattedBlocks.push(`<p>${currentParagraph.join("<br>")}</p>`);
+        currentParagraph = [];
+      }
+    };
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (!line) {
+        flushParagraph();
+        continue;
+      }
+
+      const headingMatch = line.match(/^#{1,4}\s+(.+)$/);
+      if (headingMatch) {
+        flushParagraph();
+        formattedBlocks.push(`<h4 class="response-heading">${headingMatch[1]}</h4>`);
+      } else {
+        currentParagraph.push(line);
+      }
+    }
+    flushParagraph();
+
+    const resultHtml = formattedBlocks.length > 0 ? formattedBlocks.join("") : escaped;
+
+    return resultHtml.replace(
       /\[(\d+)\]/g,
       '<button type="button" class="cite-anchor-btn" data-cite-id="$1">[$1]</button>'
     );
