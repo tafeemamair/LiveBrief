@@ -144,7 +144,7 @@ LiveBrief/
 │   ├── synthesis/
 │   │   └── grounder.py          # Grounded response synthesis & abstention
 │   ├── telemetry/
-│   │   └── latency.py           # Sub-ms stage timer & breakdown
+│   │   └── latency.py           # High-resolution stage timer & breakdown
 │   ├── voice/
 │   │   ├── server.py            # HTTP server & REST API
 │   │   ├── adapter.py           # Voice-to-pipeline bridge
