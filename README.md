@@ -1,17 +1,17 @@
 # LiveBrief
 
-**Real-time AI research & briefing engine with sub-millisecond retrieval, strict grounding, and zero-hallucination guarantees.**
+**Real-time AI research and briefing engine with low-latency retrieval, evidence-grounded responses, and explicit abstention.**
 
-LiveBrief is an interactive intelligence copilot that delivers rapid, structured, and factual briefing responses over dynamic knowledge bases. It combines in-process hybrid retrieval, evidence-first synthesis, and real-time voice interaction - all without external API calls or cloud dependencies on the retrieval path.
+LiveBrief is an interactive intelligence copilot that delivers rapid, structured briefing responses over dynamic knowledge bases. It combines in-process hybrid retrieval, evidence-grounded response assembly, and real-time voice interaction - without external API calls or cloud dependencies on the retrieval path.
 
 ---
 
 ## The Problem
 
-Traditional research and Q&A systems either sacrifice speed for accuracy (slow multi-hop retrieval) or accuracy for speed (hallucination-prone generation). LiveBrief solves both:
+Traditional research and Q&A systems can trade off retrieval speed and response grounding. LiveBrief is designed to address both by combining low-latency retrieval with evidence-grounded response handling:
 
-- **Sub-millisecond retrieval** via an in-process Rust engine - no network round trips.
-- **Strict grounding** - every claim is anchored to a citation. If evidence is insufficient, the system explicitly abstains rather than speculating.
+- **Low-latency retrieval** via an in-process Rust engine - no network round trips on the retrieval path.
+- **Evidence-grounded responses** - generated findings are tied to selected evidence and citation references. If evidence is insufficient, the system explicitly abstains rather than speculating.
 - **Interactive voice + text** - ask questions naturally via speech or text, with real-time evidence provenance.
 
 ---
@@ -22,9 +22,9 @@ Traditional research and Q&A systems either sacrifice speed for accuracy (slow m
 |---|---|
 | **In-Process Moss Retrieval** | Hybrid BM25 + dense vector search via embedded Rust `moss_core.Index` runtime |
 | **MMR Evidence Selection** | Maximal Marginal Relevance deduplication with sentence-level span extraction and token budgeting |
-| **Grounded Synthesis** | Structured responses with executive summary, key findings, and citation-anchored evidence ledger |
+| **Grounded Response Generation** | Structured responses with executive summary, key findings, and citation-anchored evidence ledger |
 | **Abstention on Insufficient Evidence** | Explicit "insufficient context" response when evidence is missing or below relevance threshold |
-| **Latency Instrumentation** | Sub-millisecond stage-by-stage timing across ingestion, indexing, retrieval, selection, and synthesis |
+| **Latency Instrumentation** | High-resolution stage-by-stage timing across ingestion, indexing, retrieval, selection, and synthesis |
 | **Voice Intelligence Copilot** | Browser-based speech input via Web Speech API with utterance classification gate |
 | **Conversational Context** | Follow-up question resolution with fresh retrieval on every turn |
 | **Dynamic Document Management** | Add, list, and delete knowledge documents at runtime via REST API |
@@ -87,11 +87,11 @@ Moss is the core retrieval runtime. LiveBrief embeds `moss_core.Index`, a Rust-b
 4. **Citation Anchoring**: Assigns sequential citation markers (`[1]`, `[2]`, ...) linked to source documents and character offsets.
 
 #### Grounding & Abstention (`livebrief.synthesis`)
-`GroundedSynthesizer` enforces strict factual grounding:
+`GroundedSynthesizer` applies evidence-grounded response handling:
 
 - **Structured Response**: Returns a typed `LiveBriefResponse` containing `executive_summary`, `key_findings` (with citation markers), `evidence_ledger` (full provenance), and `grounding_score` (0.0–1.0).
-- **No-Hallucination Fallback**: When evidence is absent or below the relevance threshold, the synthesizer explicitly declines to speculate. It returns `has_sufficient_evidence=False` with caveats explaining why no claims were generated.
-- **Grounding Score**: Quantitative metric measuring the fraction of claims directly backed by evidence citations.
+- **Abstention on Insufficient Evidence**: When evidence is absent or below the relevance threshold, the synthesizer explicitly declines to speculate. It returns `has_sufficient_evidence=False` with caveats explaining why no claims were generated.
+- **Grounding Score**: Quantitative metric measuring the fraction of generated findings that have supporting evidence citations. This measures citation coverage, not factual truth by itself.
 
 #### Evidence Ledger & Citation Provenance
 Every response includes a full `evidence_ledger` - a list of `EvidenceCitation` objects containing:
@@ -103,7 +103,7 @@ Every response includes a full `evidence_ledger` - a list of `EvidenceCitation` 
 In the web UI, clicking a citation badge `[1]` highlights the source excerpt in the ledger. Clicking the evidence card opens the Evidence Explorer modal with chunk-level provenance.
 
 #### Latency Instrumentation (`livebrief.telemetry`)
-`LatencyTracker` provides sub-millisecond `time.perf_counter()` timing across every pipeline stage:
+`LatencyTracker` uses high-resolution `time.perf_counter()` timing across every pipeline stage:
 
 | Stage | Field |
 |---|---|
