@@ -2,7 +2,7 @@
 
 **Real-time AI research & briefing engine with sub-millisecond retrieval, strict grounding, and zero-hallucination guarantees.**
 
-LiveBrief is an interactive intelligence copilot that delivers rapid, structured, and factual briefing responses over dynamic knowledge bases. It combines in-process hybrid retrieval, evidence-first synthesis, and real-time voice interaction — all without external API calls or cloud dependencies on the retrieval path.
+LiveBrief is an interactive intelligence copilot that delivers rapid, structured, and factual briefing responses over dynamic knowledge bases. It combines in-process hybrid retrieval, evidence-first synthesis, and real-time voice interaction - all without external API calls or cloud dependencies on the retrieval path.
 
 ---
 
@@ -10,9 +10,9 @@ LiveBrief is an interactive intelligence copilot that delivers rapid, structured
 
 Traditional research and Q&A systems either sacrifice speed for accuracy (slow multi-hop retrieval) or accuracy for speed (hallucination-prone generation). LiveBrief solves both:
 
-- **Sub-millisecond retrieval** via an in-process Rust engine — no network round trips.
-- **Strict grounding** — every claim is anchored to a citation. If evidence is insufficient, the system explicitly abstains rather than speculating.
-- **Interactive voice + text** — ask questions naturally via speech or text, with real-time evidence provenance.
+- **Sub-millisecond retrieval** via an in-process Rust engine - no network round trips.
+- **Strict grounding** - every claim is anchored to a citation. If evidence is insufficient, the system explicitly abstains rather than speculating.
+- **Interactive voice + text** - ask questions naturally via speech or text, with real-time evidence provenance.
 
 ---
 
@@ -67,7 +67,7 @@ UI (Grounded Brief + Citations) ◄── Grounded Synthesizer ◄── MMR Evi
 - **Parsers**: Extract text and structured metadata from Markdown, plain text, and JSON documents.
 - **Chunker**: Splits documents preserving paragraph/sentence boundaries with configurable size and overlap. Generates deterministic content-hashed chunk IDs (`sha256(doc_id:content)`).
 
-#### Moss — The Native Retrieval Engine (`livebrief.moss`)
+#### Moss - The Native Retrieval Engine (`livebrief.moss`)
 Moss is the core retrieval runtime. LiveBrief embeds `moss_core.Index`, a Rust-based in-process engine, directly into the Python process. This eliminates all network overhead on the search hot path.
 
 - **Hybrid Index**: Combines BM25 lexical/keyword indexing with dense vector embeddings. The `alpha` parameter controls fusion weight (0.0 = pure BM25, 1.0 = pure vector).
@@ -94,7 +94,7 @@ Moss is the core retrieval runtime. LiveBrief embeds `moss_core.Index`, a Rust-b
 - **Grounding Score**: Quantitative metric measuring the fraction of claims directly backed by evidence citations.
 
 #### Evidence Ledger & Citation Provenance
-Every response includes a full `evidence_ledger` — a list of `EvidenceCitation` objects containing:
+Every response includes a full `evidence_ledger` - a list of `EvidenceCitation` objects containing:
 - `citation_id`, `doc_id`, `chunk_id`
 - `excerpt` (most salient span from the source chunk)
 - `source_uri` (original file path if available)
@@ -116,7 +116,7 @@ In the web UI, clicking a citation badge `[1]` highlights the source excerpt in 
 
 #### Voice Layer (`livebrief.voice`)
 - **Utterance Classification Gate**: Suppresses filler words, incomplete fragments, and non-substantive utterances before triggering retrieval.
-- **Session Context Manager**: Resolves follow-up queries (e.g., "What about its latency?") while ensuring fresh Moss retrieval executes on every turn — context is never used as an answer source.
+- **Session Context Manager**: Resolves follow-up queries (e.g., "What about its latency?") while ensuring fresh Moss retrieval executes on every turn - context is never used as an answer source.
 - **Document Registry**: Runtime document management with add/list/delete via REST API, backed by the same Moss indexer.
 - **HTTP Server**: Lightweight `socketserver.TCPServer` serving the web UI and REST API endpoints (`/api/query`, `/api/documents`, `/api/health`, `/api/index-status`).
 
@@ -178,7 +178,7 @@ LiveBrief/
 ### Prerequisites
 
 - **Python 3.10+** (3.13 recommended)
-- **moss** (`>= 1.12.0`) — installed automatically via `pip`
+- **moss** (`>= 1.12.0`) - installed automatically via `pip`
 - **Google Chrome** or **Microsoft Edge** (required for Web Speech API voice input)
 
 ### 1. Installation
@@ -247,4 +247,4 @@ Dev dependencies: `pytest >= 8.0.0`, `pytest-cov >= 5.0.0`
 
 ## License
 
-This project is submitted to the **HiDevs Hackathon — Doctor Agent** track.
+This project is submitted to the **HiDevs Hackathon - Doctor Agent** track.
