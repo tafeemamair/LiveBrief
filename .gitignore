@@ -1,10 +1,49 @@
+# Python bytecode & caches
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Virtual environments
 .venv/
+venv/
+env/
+ENV/
+
+# Testing & coverage
 .pytest_cache/
 .coverage
 htmlcov/
+.tox/
+.nox/
+
+# Build & packaging
 *.egg-info/
 dist/
 build/
+*.egg
+
+# IDE & editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Environment variables & secrets
+.env
+.env.*
+*.pem
+*.key
+*.cert
+*.p12
+
+# Moss binary index files (generated at runtime)
+*.moss
+
+# Node / frontend (if applicable)
+node_modules/
+
+# Internal development artifacts
+implementation_plan_phase2_3.md
